@@ -1,0 +1,79 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Dashboard - Quiz Master{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Admin Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">Total Quizzes</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ quizzes }}</h5>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">Active Users</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ active_users }}</h5>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">Total Topics</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ topics }}</h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activities and Top Performers -->
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header">Recently Created Quizzes</div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for quiz in recent_quizzes %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ quiz.title }}
+                        <span class="badge bg-primary rounded-pill">{{ quiz.created_at|date:"M d, Y" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header">Quick Links</div>
+            <div class="card-body">
+                <a href="{% url 'admin_topics' %}" class="btn btn-purple me-2">Add New Topic</a>
+                <a href="{% url 'admin_quizzes' %}" class="btn btn-purple me-2">Create New Quiz</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any necessary JavaScript here
+</script>
+{% endblock %}
