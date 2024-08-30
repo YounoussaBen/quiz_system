@@ -1,0 +1,185 @@
+{% extends "admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}User Statistics{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.min.css">
+<style>
+    .user-profile-modal .modal-dialog {
+        max-width: 800px;
+    }
+    .chart-container {
+        height: 300px;
+    }
+    .badge-image {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .badge-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    @media (max-width: 767.98px) {
+        .user-profile-modal .modal-dialog {
+            max-width: 95%;
+            margin: 10px auto;
+        }
+        .chart-container {
+            height: 200px;
+        }
+        #userTable_wrapper {
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h2 mb-4">User Statistics</h1>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">User List</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="userTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Total Points</th>
+                            <th>Level</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.get_full_name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.total_score }}</td>
+                            <td>{{ user.level }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary view-profile" data-user-id="{{ user.id }}">View Profile</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Profile Modal -->
+<div class="modal fade user-profile-modal" id="userProfileModal" tabindex="-1" aria-labelledby="userProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userProfileModalLabel">User Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>User Information</h4>
+                        <p><strong>Name:</strong> <span id="userName"></span></p>
+                        <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                        <p><strong>Total Score:</strong> <span id="userTotalScore"></span></p>
+                        <p><strong>Level:</strong> <span id="userLevel"></span></p>
+                        <p><strong>Average Score:</strong> <span id="userAvgScore"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Badges Earned</h4>
+                        <div id="userBadges"></div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h4>Quiz Performance</h4>
+                        <div class="chart-container">
+                            <canvas id="quizPerformanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#userTable').DataTable({
+            responsive: true,
+            scrollX: true
+        });
+
+        $('.view-profile').on('click', function() {
+            const userId = $(this).data('user-id');
+            $.ajax({
+                url: `/admin_user_profile/${userId}/`,
+                method: 'GET',
+                success: function(data) {
+                    $('#userName').text(data.profile_user.first_name + ' ' + data.profile_user.last_name);
+                    $('#userEmail').text(data.profile_user.email);
+                    $('#userTotalScore').text(data.profile_user.total_score);
+                    $('#userLevel').text(data.profile_user.level);
+                    $('#userAvgScore').text(data.avg_score ? data.avg_score.toFixed(2) : 'N/A');
+
+                    const badgesList = $('#userBadges');
+                    badgesList.empty();
+                    data.badges.forEach(badge => {
+                        const badgeItem = `<div class="badge-item">
+                            <img src="${badge.badge_image ? badge.badge_image : ''}" class="badge-image" alt="${badge.badge_name}">
+                            <span>${badge.badge_name}</span>
+                        </div>`;
+                        badgesList.append(badgeItem);
+                    });
+
+                    const ctx = document.getElementById('quizPerformanceChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.quiz_attempts.map(attempt => attempt.quiz_title),
+                            datasets: [{
+                                label: 'Quiz Scores',
+                                data: data.quiz_attempts.map(attempt => attempt.score),
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+
+                    $('#userProfileModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching user profile:", error);
+                    alert("Error fetching user profile. Please try again.");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
