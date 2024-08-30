@@ -1,0 +1,74 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Manage Quizzes - Quiz Master{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h2 mb-4">Manage Quizzes</h1>
+
+    <!-- Filter by Topic -->
+    <div class="mb-3">
+        <form method="get" class="form-inline">
+            <div class="input-group">
+                <select name="topic" class="form-control">
+                    <option value="">All Topics</option>
+                    {% for topic in topics %}
+                    <option value="{{ topic.id }}" {% if selected_topic == topic.id|stringformat:"s" %}selected{% endif %}>
+                        {{ topic.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Add Quiz Button -->
+    <a href="{% url 'create_quiz' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus me-2"></i>Add New Quiz
+    </a>
+
+    <!-- Quizzes Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Topic</th>
+                            <th>Difficulty</th>
+                            <th>Created Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for quiz in quizzes %}
+                        <tr>
+                            <td>{{ quiz.title }}</td>
+                            <td>{{ quiz.topic.name }}</td>
+                            <td>{{ quiz.difficulty }}</td>
+                            <td>{{ quiz.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge {% if quiz.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if quiz.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'edit_quiz' quiz.id %}" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'delete_quiz' quiz.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
