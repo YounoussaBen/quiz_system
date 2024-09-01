@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -53,9 +54,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
+    # Method to handle score and level increases
     def increase_score(self, points):
         self.total_score += points
-        self.level = (self.total_score // 100) + 1
+        self.level = (self.total_score // 100) + 1  # Level increases every 100 points
+        if self.level % 10 == 0:  # Award a new badge every 10 levels
+            Badge.objects.create(user=self, name=f"Level {self.level} Achiever")
         self.save()
 
 # Topic Model
@@ -83,6 +87,8 @@ class Quiz(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    duration = models.DurationField(default=timezone.timedelta(minutes=30))  
+    required_level = models.IntegerField(default=1) 
 
     def __str__(self):
         return self.title
