@@ -1,0 +1,79 @@
+{# templates/user/my_profile.html #}
+{% extends 'user/user_base.html' %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">My Profile</h1>
+
+    <div class="row">
+        <!-- Profile Overview -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Profile Overview</h5>
+                    <div class="user-profile">
+                        <img src="{{ user.profile_picture|default:'/static/images/default_profile.png' }}" alt="Profile Picture">
+                    </div>
+                    <p class="card-text">Name: {{ user.get_full_name }}</p>
+                    <p class="card-text">Email: {{ user.email }}</p>
+                    <p class="card-text">Score: {{ user.total_score }}</p>
+                    <p class="card-text">Level: {{ user.level }}</p>
+                    <p class="card-text">Ranking: #{{ user_ranking }}</p> <!-- Add logic to calculate user_ranking -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Profile Form -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Update Profile</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ profile_form.as_p }}
+                        <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Change Password</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ password_form.as_p }}
+                        <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Picture Modal -->
+    <div class="modal fade" id="updatePictureModal" tabindex="-1" aria-labelledby="updatePictureModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updatePictureModalLabel">Update Profile Picture</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="profile_picture" class="form-label">Profile Picture</label>
+                            <input type="file" class="form-control" id="profile_picture" name="profile_picture">
+                        </div>
+                        <button type="submit" name="update_picture" class="btn btn-primary">Update Picture</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
