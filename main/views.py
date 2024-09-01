@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from .models import Quiz, User, UserQuizAttempt, Topic, UserBadge
+from .models import Quiz, User, UserQuizAttempt, Topic, UserBadge, UserAnswer, Question, Option
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from django.contrib import messages
@@ -8,6 +8,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from .forms import TopicForm, QuizForm, QuestionForm, OptionFormSet
 from django.http import JsonResponse
+from django.utils import timezone
+from django.core.paginator import Paginator
+from django.contrib.auth import update_session_auth_hash
+from .forms import UserUpdateForm, PasswordChangeForm
+import json
 
 def logout_view(request):
     logout(request)
@@ -23,7 +28,7 @@ def login_view(request):
             if user.is_staff:
                 return redirect('admin_dashboard')
             else:
-                return redirect('user_dashboard')
+                return redirect('user_home')
         else:
             messages.error(request, 'Invalid email or password')
     return render(request, 'login.html')
@@ -41,7 +46,7 @@ def register_view(request):
         try:
             user = User.objects.create_user(email=email, password=password)
             login(request, user)
-            return redirect('user_dashboard')
+            return redirect('user_home')
         except IntegrityError:
             messages.error(request, 'Email already exists')
         except ValueError as e:
@@ -80,7 +85,6 @@ def admin_dashboard(request):
     }
 
     return render(request, 'admin/admin_dashboard.html', context)
-
 
 @user_passes_test(is_admin)
 def admin_topics(request):
@@ -208,7 +212,7 @@ def user_statistics(request):
     return render(request, 'admin/user_statistics.html', context)
 
 @user_passes_test(is_admin)
-def user_profile(request, user_id):
+def admin_profile(request, user_id):
     user = get_object_or_404(User, id=user_id)
     quiz_attempts = UserQuizAttempt.objects.filter(user=user)
     badges = UserBadge.objects.filter(user=user)
@@ -254,40 +258,231 @@ def user_profile(request, user_id):
     
     return JsonResponse(context)
 
+@login_required
+def user_home(request):
+    user = request.user
+    completed_quizzes = UserQuizAttempt.objects.filter(user=user, status='Completed').count()
+    completed_attempts = UserQuizAttempt.objects.filter(user=user, status='Completed')
+    completed_quizzes_ids = completed_attempts.values_list('quiz__id', flat=True)
+    badges = UserBadge.objects.filter(user=user)
+    
+    # Get Quiz of the Day
+    today = timezone.now().date()
+    quiz_of_the_day = Quiz.objects.filter(is_active=True, created_at__date=today).first()
+    if not quiz_of_the_day:
+        quiz_of_the_day = Quiz.objects.filter(is_active=True).order_by('-created_at').first()
+    
+    # Get popular quizzes
+    popular_quizzes = Quiz.objects.filter(is_active=True).order_by('-attempts').distinct()[:6]
+    total_score = user.total_score
+    progress = total_score % 100
+
+    context = {
+        'user': user,
+        'completed_quizzes': completed_quizzes,
+        'badges': badges,
+        'quiz_of_the_day': quiz_of_the_day,
+        'popular_quizzes': popular_quizzes,
+        'progress': progress,
+        'completed_quizzes_ids': completed_quizzes_ids,
+    }
+    return render(request, 'user/user_home.html', context)
+
+@login_required
+def quizzes(request):
+    user = request.user
+    
+    # Fetch all topics
+    topics = Topic.objects.all()
+    
+    # Fetch quizzes by topic and difficulty, and check if the user has already taken them
+    quizzes_by_topic = []
+    for topic in topics:
+        quizzes = Quiz.objects.filter(topic=topic, is_active=True)
+        topic_quizzes = []
+        
+        for quiz in quizzes:
+            # Check if the user has already attempted this quiz
+            user_attempt = UserQuizAttempt.objects.filter(user=user, quiz=quiz, status='Completed').exists()
+            
+            topic_quizzes.append({
+                'quiz': quiz,
+                'is_taken': user_attempt,
+            })
+
+        quizzes_by_topic.append({
+            'topic': topic,
+            'quizzes': topic_quizzes,
+        })
+
+    context = {
+        'user': user,
+        'quizzes_by_topic': quizzes_by_topic,
+    }
+    return render(request, 'user/quizzes.html', context)
+
+@login_required
+def start_quiz(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True)
+    user = request.user
+    
+    # Check if the user meets the level requirement
+    if user.level < quiz.required_level:
+        messages.error(request, f"You need to be at least level {quiz.required_level} to start this quiz.")
+        return redirect('user_home')
+    
+    # Check if the user has already completed this quiz
+    completed_attempt = UserQuizAttempt.objects.filter(user=user, quiz=quiz, status='Completed').first()
+    if completed_attempt:
+        messages.info(request, "You have already completed this quiz.")
+        return redirect('user_home')
+    
+    # Check if the user has an in-progress attempt
+    existing_attempt = UserQuizAttempt.objects.filter(user=user, quiz=quiz, status='In Progress').first()
+    if existing_attempt:
+        return redirect('take_quiz', attempt_id=existing_attempt.id)
+    
+    # Create a new attempt
+    attempt = UserQuizAttempt.objects.create(user=user, quiz=quiz, status='In Progress')
+    return redirect('take_quiz', attempt_id=attempt.id)
+
+@login_required
+def take_quiz(request, attempt_id):
+    attempt = get_object_or_404(UserQuizAttempt, id=attempt_id, user=request.user)
+    quiz = attempt.quiz
+    user = request.user
+    
+    if attempt.status == 'Completed':
+        messages.info(request, "This quiz attempt has already been completed.")
+        return redirect('user_home')
+    
+    questions = list(quiz.questions.all())
+    answered_questions = set(UserAnswer.objects.filter(attempt=attempt).values_list('question_id', flat=True))
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        question_id = data.get('question_id')
+        selected_option_id = data.get('selected_option_id')
+        
+        if question_id in answered_questions:
+            return JsonResponse({'error': 'This question has already been answered.'}, status=400)
+        
+        question = get_object_or_404(Question, id=question_id, quiz=quiz)
+        selected_option = get_object_or_404(Option, id=selected_option_id, question=question)
+        
+        is_correct = selected_option.is_correct
+        points_earned = question.points if is_correct else 0
+        
+        UserAnswer.objects.create(
+            attempt=attempt,
+            question=question,
+            selected_option=selected_option,
+            is_correct=is_correct
+        )
+        
+        attempt.score += points_earned
+        attempt.save()
+        
+        old_level = user.level
+        user.increase_score(points_earned)
+        new_level = user.level
+        level_up = new_level > old_level
+        
+        if len(answered_questions) + 1 == len(questions):
+            attempt.status = 'Completed'
+            attempt.save()
+        
+        return JsonResponse({
+            'is_correct': is_correct,
+            'points_earned': points_earned,
+            'total_score': attempt.score,
+            'quiz_completed': attempt.status == 'Completed',
+            'level_up': level_up,
+            'new_level': new_level
+        })
+    
+    unanswered_questions = [q for q in questions if q.id not in answered_questions]
+    
+    return render(request, 'user/take_quiz.html', {
+        'quiz': quiz,
+        'questions': json.dumps([{
+            'id': q.id,
+            'text': q.text,
+            'points': q.points,
+            'options': [{
+                'id': o.id,
+                'text': o.text
+            } for o in q.options.all()]
+        } for q in unanswered_questions]),
+        'attempt': attempt,
+        'total_questions': len(questions),
+        'answered_questions': len(answered_questions),
+        'user_level': user.level,
+        'user_score': user.total_score
+    })
+
+@login_required
+def continue_quiz(request, attempt_id):
+    return redirect('take_quiz', attempt_id=attempt_id)
 
 
-# @login_required
-# def user_dashboard(request):
-#     user = request.user
+from django.core.paginator import Paginator
+from django.template.loader import render_to_string
+from django.http import HttpResponse
 
-#     # Get today's quiz
-#     todays_quiz = Quiz.objects.filter(is_active=True).order_by('?').first()
+@login_required
+def leaderboard_view(request):
+    users = User.objects.order_by('-level', '-total_score')
+    
+    paginator = Paginator(users, 20)  # Show 20 users per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    current_user = request.user
+    user_ranking = list(users).index(current_user) + 1
 
-#     # Get user statistics
-#     total_points = UserQuizAttempt.objects.filter(user=user).aggregate(Sum('score'))['score__sum'] or 0
-#     quizzes_taken = UserQuizAttempt.objects.filter(user=user).count()
-#     user_rank = User.objects.filter(userquizattempt__score__gt=total_points).distinct().count() + 1
+    context = {
+        'page_obj': page_obj,
+        'current_user': current_user,
+        'user_ranking': user_ranking,
+    }
 
-#     # Calculate user level (example: level up every 100 points)
-#     user_level = total_points // 100 + 1
+    if request.headers.get('HX-Request'):
+        # Return only the new users for infinite scroll
+        html = render_to_string('user/leaderboard_users.html', context)
+        return HttpResponse(html)
+    
+    return render(request, 'user/leaderboard.html', context)
 
-#     # Get recent activity
-#     recent_attempts = UserQuizAttempt.objects.filter(user=user).order_by('-completed_at')[:5]
+@login_required
+def my_profile(request):
+    user = request.user
 
-#     # Get available quizzes
-#     topics = Topic.objects.all()
-#     available_quizzes = Quiz.objects.filter(is_active=True).order_by('topic', 'difficulty')
+    if request.method == 'POST':
+        user_form = UserUpdateForm(request.POST, request.FILES, instance=user)
+        password_form = PasswordChangeForm(user, request.POST)
+        if user_form.is_valid():
+            user_form.save()
+            messages.success(request, 'Your profile has been updated successfully.')
+            return redirect('my_profile')
+        if password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)  # Keep the user logged in after password change
+            messages.success(request, 'Your password has been updated successfully.')
+            return redirect('my_profile')
+    else:
+        user_form = UserUpdateForm(instance=user)
+        password_form = PasswordChangeForm(user)
 
-#     context = {
-#         'user': user,
-#         'todays_quiz': todays_quiz,
-#         'total_points': total_points,
-#         'quizzes_taken': quizzes_taken,
-#         'user_rank': user_rank,
-#         'user_level': user_level,
-#         'recent_attempts': recent_attempts,
-#         'topics': topics,
-#         'available_quizzes': available_quizzes,
-#     }
+    # Get the user's ranking
+    all_users = User.objects.filter(is_active=True).order_by('-total_score', '-level')
+    user_ranking = list(all_users).index(user) + 1  # Adding 1 for 1-based indexing
 
-#     return render(request, 'user_dashboard.html', context)
+    context = {
+        'user': user,
+        'user_form': user_form,
+        'password_form': password_form,
+        'user_ranking': user_ranking,
+        'total_users': len(all_users),
+    }
+    return render(request, 'user/my_profile.html', context)
