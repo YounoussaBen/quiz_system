@@ -1,0 +1,112 @@
+{% extends 'user/user_base.html' %}
+
+{% block title %}Quiz Master - Home{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    {% if user %}
+        <h1 class="mb-4">Welcome back, {{ user.first_name }}!</h1>
+    {% else %}
+        <h1 class="mb-4">Welcome back!</h1>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Your Progress</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="mb-0">Level {{ user.level }}</h2>
+                        <span class="badge bg-primary">{{ user.total_score }} Points</span>
+                    </div>
+                    <p class="card-text">Completed Quizzes: {{ completed_quizzes }}</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {{ progress }}%" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">{{ progress }}% progress to next level</small>
+                </div>
+            </div>
+        </div>
+    </div>    
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-medal me-2"></i>Your Achievements</h5>
+                <div class="row">
+                    {% for badge in badges %}
+                    <div class="col-3 text-center mb-3">
+                        <img src="{{ badge.badge.icon }}" alt="{{ badge.badge.name }}" class="img-fluid" style="max-width: 50px;">
+                        <p class="small mt-2">{{ badge.badge.name }}</p>
+                    </div>
+                    {% empty %}
+                    <p>Start taking quizzes to earn cool badges!</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-star me-2"></i>Quiz of the Day</h5>
+                {% if quiz_of_the_day %}
+                <h6 class="card-subtitle mb-2 text-muted">{{ quiz_of_the_day.title }}</h6>
+                <p class="card-text">
+                    <span class="badge bg-info me-2">{{ quiz_of_the_day.topic.name }}</span>
+                    <span class="badge bg-warning">{{ quiz_of_the_day.difficulty }}</span>
+                </p>
+                {% if user.level >= quiz_of_the_day.required_level %}
+                    {% if quiz_of_the_day.id in completed_quizzes_ids %}
+                    <button class="btn btn-secondary" disabled>Completed</button>
+                    {% else %}
+                    <a href="{% url 'start_quiz' quiz_of_the_day.id %}" class="btn btn-primary">Take Quiz</a>
+                    {% endif %}
+                {% else %}
+                <button class="btn btn-secondary" disabled>Locked (Level {{ quiz_of_the_day.required_level }} required)</button>
+                {% endif %}
+                {% else %}
+                <p class="card-text">No Quiz of the Day available. Check back tomorrow!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-fire me-2"></i>Popular Quizzes</h5>
+                <div class="row">
+                    {% for quiz in popular_quizzes %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ quiz.title }}</h6>
+                                <p class="card-text">
+                                    <span class="badge bg-info me-2">{{ quiz.topic.name }}</span>
+                                    <span class="badge bg-warning">{{ quiz.difficulty }}</span>
+                                </p>
+                                {% if user.level >= quiz.required_level %}
+                                    {% if quiz.id in completed_quizzes_ids %}
+                                    <button class="btn btn-outline-secondary btn-sm" disabled>Completed</button>
+                                    {% else %}
+                                    <a href="{% url 'start_quiz' quiz.id %}" class="btn btn-outline-primary btn-sm">Start Quiz</a>
+                                    {% endif %}
+                                {% else %}
+                                <button class="btn btn-outline-secondary btn-sm" disabled>Locked (Level {{ quiz.required_level }})</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p>No popular quizzes available at the moment.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
