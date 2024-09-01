@@ -132,7 +132,7 @@
     <div class="sidebar">
         <div class="position-sticky">
             <div class="user-profile">
-                <img src="{{ user.profile_picture.url|default:'/static/images/default_profile.png' }}" alt="Profile Picture">
+                <img src="{{ user.profile_picture|default:'/static/images/default_profile.png' }}" alt="Profile Picture">
                 <h6>{{ user.get_full_name|default:user.email }}</h6>
                 <p>{{ user.email }}</p>
             </div>
