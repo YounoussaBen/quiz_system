@@ -1,0 +1,73 @@
+{% extends 'user/user_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-8 text-center">Leaderboard</h1>
+    
+    <div class="bg-blue-100 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Your Ranking</h2>
+        <div class="flex items-center">
+            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold mr-4">
+                {{ user_ranking }}
+            </div>
+            <div>
+                <p class="font-semibold">{{ current_user.get_full_name }}</p>
+                <p class="text-sm text-gray-600">Level: {{ current_user.level }} | Score: {{ current_user.total_score }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md">
+        <h2 class="text-xl font-semibold p-4 border-b">Top Players</h2>
+        <div id="leaderboard-list" class="divide-y">
+            {% for user in page_obj %}
+            <div class="flex items-center p-4">
+                <div class="w-12 text-2xl font-bold">{{ forloop.counter0|add:page_obj.start_index }}</div>
+                <div class="flex-1">
+                    <div class="font-semibold">{{ user.get_full_name }}</div>
+                    <div class="text-sm text-gray-500">Level: {{ user.level }} | Score: {{ user.total_score }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div id="loading" class="text-center py-4 hidden">
+            Loading more users...
+        </div>
+    </div>
+</div>
+
+<script>
+    let page = 1;
+    let loading = false;
+
+    function loadMoreUsers() {
+        if (loading) return;
+        loading = true;
+        document.getElementById('loading').classList.remove('hidden');
+
+        fetch(`/leaderboard?page=${page + 1}`)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newUsers = doc.querySelectorAll('#leaderboard-list > div');
+                
+                if (newUsers.length > 0) {
+                    const leaderboardList = document.getElementById('leaderboard-list');
+                    newUsers.forEach(user => leaderboardList.appendChild(user));
+                    page++;
+                }
+                
+                loading = false;
+                document.getElementById('loading').classList.add('hidden');
+            });
+    }
+
+    window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+            loadMoreUsers();
+        }
+    });
+</script>
+{% endblock %}
