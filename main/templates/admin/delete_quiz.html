@@ -1,0 +1,19 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Delete Quiz - Quiz Master{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h2 mb-4">Delete Quiz</h1>
+
+    <div class="alert alert-warning">
+        Are you sure you want to delete the quiz titled "<strong>{{ quiz.title }}</strong>"?
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete Quiz</button>
+        <a href="{% url 'admin_quizzes' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
