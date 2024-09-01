@@ -1,0 +1,14 @@
+{% extends 'user/user_base.html' %}
+{% block content %}
+
+
+{% for user in page_obj %}
+<div class="flex items-center p-4">
+    <div class="w-12 text-2xl font-bold">{{ forloop.counter0|add:page_obj.start_index }}</div>
+    <div class="flex-1">
+        <div class="font-semibold">{{ user.firstname }}</div>
+        <div class="text-sm text-gray-500">Level: {{ user.level }} | Score: {{ user.total_score }}</div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
