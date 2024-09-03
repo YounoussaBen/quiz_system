@@ -142,3 +142,22 @@ class UserBadge(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='badges')
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE)
     earned_at = models.DateTimeField(auto_now_add=True)
+
+class LearningMaterial(models.Model):
+    MATERIAL_TYPE_CHOICES = [
+        ('PDF', 'PDF Document'),
+        ('IMAGE', 'Image'),
+        ('VIDEO', 'Video'),
+        ('OTHER', 'Other'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    topic = models.ForeignKey('Topic', on_delete=models.CASCADE, related_name='learning_materials')
+    material_type = models.CharField(max_length=10, choices=MATERIAL_TYPE_CHOICES, default='OTHER')
+    file = models.FileField(upload_to='learning_materials/files/', null=True, blank=True)  # Allows any type of file
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return self.title
