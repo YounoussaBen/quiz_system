@@ -15,6 +15,12 @@ urlpatterns = [
     path('admin_quizzes/<int:quiz_id>/delete/', views.delete_quiz, name='delete_quiz'), 
     path('admin_user_statistics/', views.user_statistics, name='user_statistics'),
     path('admin_user_profile/<int:user_id>/', views.admin_profile, name='admin_profile'),
+    path('admin_learning-materials/', views.admin_learning_materials, name='admin_learning_materials'),
+    path('admin_learning-materials/create/', views.create_learning_material, name='create_learning_material'),
+    path('admin_learning-materials/<int:material_id>/update/', views.update_learning_material, name='update_learning_material'),
+    path('admin_learning-materials/<int:material_id>/delete/', views.delete_learning_material, name='delete_learning_material'),
+    path('admin_learning-materials/preview/<int:material_id>/', views.preview_material, name='preview_material'),
+
 
     # path('dashboard/', user_home, name='user_home'),
     path('dashboard/', views.user_home, name='user_home'),

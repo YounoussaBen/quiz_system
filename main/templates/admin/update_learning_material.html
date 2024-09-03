@@ -1,0 +1,77 @@
+{% extends "admin/admin_base.html" %}
+{% load static %}
+
+{% block title %}Update Learning Material{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .card {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        background-color: #8a2be2;
+        color: white;
+    }
+    .btn-submit {
+        background-color: #8a2be2;
+        border-color: #8a2be2;
+    }
+    .btn-submit:hover {
+        background-color: #7a1dd1;
+        border-color: #7a1dd1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card form-container mt-4">
+                <div class="card-header">
+                    <h2 class="mb-0">Update Learning Material</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-submit text-white">Update Learning Material</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Add Bootstrap classes to form fields
+        $('input, select, textarea').addClass('form-control');
+        
+        // File input styling
+        $('input[type="file"]').on('change', function() {
+            var fileName = $(this).val().split('\\').pop();
+            $(this).next('.custom-file-label').html(fileName);
+        });
+    });
+</script>
+{% endblock %}

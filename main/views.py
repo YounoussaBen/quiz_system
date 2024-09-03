@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from .models import Quiz, User, UserQuizAttempt, Topic, UserBadge, UserAnswer, Question, Option
+from .models import Quiz, User, UserQuizAttempt, Topic, UserBadge, UserAnswer, Question, Option, LearningMaterial
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Q
 from django.contrib import messages
@@ -12,7 +12,10 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from django.contrib.auth import update_session_auth_hash
 import json
-from .forms import UserUpdateForm, CustomPasswordChangeForm
+from .forms import UserUpdateForm, CustomPasswordChangeForm, CreateLearningMaterialForm, UpdateLearningMaterialForm
+from django.http import HttpResponse
+import mimetypes
+
 
 def logout_view(request):
     logout(request)
@@ -258,6 +261,93 @@ def admin_profile(request, user_id):
     
     return JsonResponse(context)
 
+
+@user_passes_test(is_admin)
+def admin_learning_materials(request):
+    materials = LearningMaterial.objects.all().order_by('-uploaded_at')
+    topics = Topic.objects.all()
+    
+    context = {
+        'materials': materials,
+        'topics': topics,
+    }
+    return render(request, 'admin/admin_learning_materials.html', context)
+
+@user_passes_test(is_admin)
+def create_learning_material(request):
+    if request.method == 'POST':
+        form = CreateLearningMaterialForm(request.POST, request.FILES)
+        if form.is_valid():
+            material = form.save(commit=False)
+            material.uploaded_by = request.user
+            
+            # Validate file type
+            file = request.FILES.get('file')
+            if file:
+                if material.material_type == 'PDF' and not file.name.lower().endswith('.pdf'):
+                    form.add_error('file', 'Only PDF files are allowed for PDF material type.')
+                elif material.material_type == 'IMAGE' and not file.content_type.startswith('image/'):
+                    form.add_error('file', 'Only image files are allowed for Image material type.')
+                elif material.material_type == 'VIDEO' and not file.content_type.startswith('video/'):
+                    form.add_error('file', 'Only video files are allowed for Video material type.')
+            
+            if not form.errors:
+                material.save()
+                messages.success(request, 'Learning material created successfully.')
+                return redirect('admin_learning_materials')
+    else:
+        form = CreateLearningMaterialForm()
+
+    return render(request, 'admin/create_learning_material.html', {'form': form})
+
+@user_passes_test(is_admin)
+def update_learning_material(request, material_id):
+    material = get_object_or_404(LearningMaterial, id=material_id)
+    if request.method == 'POST':
+        form = UpdateLearningMaterialForm(request.POST, request.FILES, instance=material)
+        if form.is_valid():
+            # Validate file type
+            file = request.FILES.get('file')
+            if file:
+                if material.material_type == 'PDF' and not file.name.lower().endswith('.pdf'):
+                    form.add_error('file', 'Only PDF files are allowed for PDF material type.')
+                elif material.material_type == 'IMAGE' and not file.content_type.startswith('image/'):
+                    form.add_error('file', 'Only image files are allowed for Image material type.')
+                elif material.material_type == 'VIDEO' and not file.content_type.startswith('video/'):
+                    form.add_error('file', 'Only video files are allowed for Video material type.')
+            
+            if not form.errors:
+                form.save()
+                messages.success(request, 'Learning material updated successfully.')
+                return redirect('admin_learning_materials')
+    else:
+        form = UpdateLearningMaterialForm(instance=material)
+
+    return render(request, 'admin/update_learning_material.html', {'form': form, 'material': material})
+
+@user_passes_test(is_admin)
+def delete_learning_material(request, material_id):
+    material = get_object_or_404(LearningMaterial, id=material_id)
+    if request.method == 'POST':
+        material.delete()
+        messages.success(request, 'Learning material deleted successfully.')
+        return redirect('admin_learning_materials')
+    return render(request, 'admin/delete_learning_material.html', {'material': material})
+
+@user_passes_test(is_admin)
+def preview_material(request, material_id):
+    material = get_object_or_404(LearningMaterial, id=material_id)
+    if material.file:
+        file_path = material.file.path
+        file_type, _ = mimetypes.guess_type(file_path)
+        
+        with open(file_path, 'rb') as file:
+            response = HttpResponse(file.read(), content_type=file_type)
+            response['Content-Disposition'] = f'inline; filename="{material.file.name}"'
+            return response
+    else:
+        return HttpResponse("No file available for preview.")
+
 @login_required
 def user_home(request):
     user = request.user
@@ -425,7 +515,6 @@ def take_quiz(request, attempt_id):
 def continue_quiz(request, attempt_id):
     return redirect('take_quiz', attempt_id=attempt_id)
 
-
 @login_required
 def leaderboard_view(request):
     users = User.objects.order_by('-level', '-total_score')
@@ -459,7 +548,6 @@ def leaderboard_view(request):
         'user_badges': UserBadge.objects.filter(user=request.user).select_related('badge')
     }
     return render(request, 'user/leaderboard.html', context)
-
 
 @login_required
 def my_profile(request):

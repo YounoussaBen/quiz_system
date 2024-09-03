@@ -1,6 +1,17 @@
 from django import forms
-from .models import Quiz, Question, Option, Topic, User
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm
+from .models import Quiz, Question, Option, Topic, User, LearningMaterial
+from django.contrib.auth.forms import PasswordChangeForm
+
+
+class CreateLearningMaterialForm(forms.ModelForm):
+    class Meta:
+        model = LearningMaterial
+        fields = ['title', 'description', 'topic', 'material_type', 'file']
+
+class UpdateLearningMaterialForm(forms.ModelForm):
+    class Meta:
+        model = LearningMaterial
+        fields = ['title', 'description', 'topic']
 
 class TopicForm(forms.ModelForm):
     class Meta:
