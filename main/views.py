@@ -243,7 +243,7 @@ def admin_profile(request, user_id):
     badges_data = [
         {
             'badge_name': badge.badge.name,
-            'badge_image': badge.badge.icon if badge.badge.icon else None 
+            'badge_image': badge.badge.icon.url if badge.badge.icon else None 
         }
         for badge in badges
     ]

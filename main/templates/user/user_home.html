@@ -36,7 +36,7 @@
                 <div class="row">
                     {% for badge in badges %}
                     <div class="col-3 text-center mb-3">
-                        <img src="{{ badge.badge.icon }}" alt="{{ badge.badge.name }}" class="img-fluid" style="max-width: 50px;">
+                        <img src="{{ badge.badge.icon.url }}" alt="{{ badge.badge.name }}" class="img-fluid" style="max-width: 50px;">
                         <p class="small mt-2">{{ badge.badge.name }}</p>
                     </div>
                     {% empty %}

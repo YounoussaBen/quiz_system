@@ -16,7 +16,7 @@
             {% with latest_badge=user.badges.last %}
                 {% if latest_badge %}
                 <div class="mt-2">
-                    <img src="{{ latest_badge.badge.icon }}" alt="{{ latest_badge.badge.name }}" class="badge-icon" style="width: 30px; height: 30px;" data-bs-toggle="tooltip" title="{{ latest_badge.badge.name }}">
+                    <img src="{{ latest_badge.badge.icon.url }}" alt="{{ latest_badge.badge.name }}" class="badge-icon" style="width: 30px; height: 30px;" data-bs-toggle="tooltip" title="{{ latest_badge.badge.name }}">
                 </div>
                 {% endif %}
             {% endwith %}

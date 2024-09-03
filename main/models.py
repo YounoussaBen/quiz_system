@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -54,13 +56,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
     
-    # Method to handle score and level increases
     def increase_score(self, points):
         self.total_score += points
-        self.level = (self.total_score // 100) + 1  # Level increases every 100 points
-        if self.level % 10 == 0:  # Award a new badge every 10 levels
-            Badge.objects.create(user=self, name=f"Level {self.level} Achiever")
+        new_level = (self.total_score // 100) + 1
+        if new_level > self.level:
+            self.level = new_level
+            self.award_level_badge()
         self.save()
+
+    def award_level_badge(self):
+        level_badges = LevelBadge.objects.filter(level=self.level)
+        for level_badge in level_badges:
+            UserBadge.objects.get_or_create(user=self, badge=level_badge.badge)
+
 
 # Topic Model
 class Topic(models.Model):
@@ -134,14 +142,34 @@ class UserAnswer(models.Model):
 # Badge Model
 class Badge(models.Model):
     name = models.CharField(max_length=100)
-    description = models.TextField()
     icon = models.ImageField(upload_to='badges/')
 
-# UserBadge Model
+    def __str__(self):
+        return self.name
+
+class LevelBadge(models.Model):
+    badge = models.ForeignKey(Badge, on_delete=models.CASCADE)
+    level = models.IntegerField(unique=True)
+
+    def __str__(self):
+        return f"{self.badge.name} - Level {self.level}"
+
 class UserBadge(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='badges')
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE)
     earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'badge')
+
+    def __str__(self):
+        return f"{self.user.email} - {self.badge.name}"
+    
+@receiver(post_save, sender=User)
+def award_default_badge(sender, instance, created, **kwargs):
+    if created:
+        default_badge = LevelBadge.objects.get(level=0).badge
+        UserBadge.objects.create(user=instance, badge=default_badge)
 
 class LearningMaterial(models.Model):
     MATERIAL_TYPE_CHOICES = [
