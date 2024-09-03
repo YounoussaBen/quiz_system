@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from .models import Quiz, User, UserQuizAttempt, Topic, UserBadge, UserAnswer, Question, Option
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
@@ -11,8 +11,8 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.contrib.auth import update_session_auth_hash
-from .forms import UserUpdateForm, PasswordChangeForm
 import json
+from .forms import UserUpdateForm, CustomPasswordChangeForm
 
 def logout_view(request):
     logout(request)
@@ -426,63 +426,99 @@ def continue_quiz(request, attempt_id):
     return redirect('take_quiz', attempt_id=attempt_id)
 
 
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
-from django.http import HttpResponse
-
 @login_required
 def leaderboard_view(request):
     users = User.objects.order_by('-level', '-total_score')
-    
     paginator = Paginator(users, 20)  # Show 20 users per page
     page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-    
-    current_user = request.user
-    user_ranking = list(users).index(current_user) + 1
+    page = paginator.get_page(page_number)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        user_data = []
+        for user in page:
+            latest_badge = UserBadge.objects.filter(user=user).order_by('-earned_at').first()
+            user_data.append({
+                'full_name': user.get_full_name(),
+                'email': user.email,
+                'level': user.level,
+                'total_score': user.total_score,
+                'profile_picture': user.profile_picture.url if user.profile_picture else None,
+                'latest_badge': {
+                    'name': latest_badge.badge.name,
+                    'icon': latest_badge.badge.icon.url
+                } if latest_badge else None
+            })
+        return JsonResponse({
+            'users': user_data,
+            'has_next': page.has_next()
+        })
 
     context = {
-        'page_obj': page_obj,
-        'current_user': current_user,
-        'user_ranking': user_ranking,
+        'page': page,
+        'user': request.user,
+        'user_badges': UserBadge.objects.filter(user=request.user).select_related('badge')
     }
-
-    if request.headers.get('HX-Request'):
-        # Return only the new users for infinite scroll
-        html = render_to_string('user/leaderboard_users.html', context)
-        return HttpResponse(html)
-    
     return render(request, 'user/leaderboard.html', context)
+
 
 @login_required
 def my_profile(request):
     user = request.user
+    user_form = UserUpdateForm(instance=user)
+    password_form = CustomPasswordChangeForm(user)
 
     if request.method == 'POST':
-        user_form = UserUpdateForm(request.POST, request.FILES, instance=user)
-        password_form = PasswordChangeForm(user, request.POST)
-        if user_form.is_valid():
-            user_form.save()
-            messages.success(request, 'Your profile has been updated successfully.')
-            return redirect('my_profile')
-        if password_form.is_valid():
-            user = password_form.save()
-            update_session_auth_hash(request, user)  # Keep the user logged in after password change
-            messages.success(request, 'Your password has been updated successfully.')
-            return redirect('my_profile')
-    else:
-        user_form = UserUpdateForm(instance=user)
-        password_form = PasswordChangeForm(user)
+        if 'update_profile' in request.POST:
+            user_form = UserUpdateForm(request.POST, instance=user)
+            if user_form.is_valid():
+                user_form.save()
+                messages.success(request, 'Your profile has been updated successfully.')
+                return redirect('my_profile')
+        elif 'change_password' in request.POST:
+            password_form = CustomPasswordChangeForm(user, request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, 'Your password has been updated successfully.')
+                return redirect('my_profile')
 
     # Get the user's ranking
-    all_users = User.objects.filter(is_active=True).order_by('-total_score', '-level')
-    user_ranking = list(all_users).index(user) + 1  # Adding 1 for 1-based indexing
+    user_ranking = User.objects.filter(
+        Q(level__gt=user.level) | 
+        Q(level=user.level, total_score__gt=user.total_score) |
+        Q(level=user.level, total_score=user.total_score, id__lt=user.id)
+    ).count() + 1
+
+    total_users = User.objects.filter(is_active=True).count()
+    
+    # Get user badges
+    user_badges = UserBadge.objects.filter(user=user).select_related('badge')
+
+    # Calculate progress to next level
+    points_to_next_level = (user.level + 1) * 100 - user.total_score
+    progress_percentage = (user.total_score % 100) if user.total_score > 0 else 0
 
     context = {
         'user': user,
         'user_form': user_form,
         'password_form': password_form,
         'user_ranking': user_ranking,
-        'total_users': len(all_users),
+        'total_users': total_users,
+        'user_badges': user_badges,
+        'points_to_next_level': points_to_next_level,
+        'progress_percentage': progress_percentage,
     }
     return render(request, 'user/my_profile.html', context)
+
+@login_required
+def update_profile_picture(request):
+    if request.method == 'POST':
+        if 'profile_picture' in request.FILES:
+            request.user.profile_picture = request.FILES['profile_picture']
+            request.user.save()
+            return JsonResponse({'success': True, 'new_picture_url': request.user.profile_picture.url})
+        elif 'remove_picture' in request.POST:
+            request.user.profile_picture = None
+            request.user.save()
+            return JsonResponse({'success': True})
+    return JsonResponse({'success': False})

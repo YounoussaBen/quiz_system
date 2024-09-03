@@ -1,79 +1,181 @@
-{# templates/user/my_profile.html #}
 {% extends 'user/user_base.html' %}
+{% load static %}
 
-{% block title %}My Profile{% endblock %}
+{% block title %}My Profile - TechArmy{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <h1 class="mb-4">My Profile</h1>
+<div class="container py-5">
+    <h1 class="text-center mb-5">My Profile</h1>
 
     <div class="row">
-        <!-- Profile Overview -->
         <div class="col-lg-4 mb-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="card-title">Profile Overview</h5>
-                    <div class="user-profile">
-                        <img src="{{ user.profile_picture|default:'/static/images/default_profile.png' }}" alt="Profile Picture">
+            <div class="text-center">
+                <div class="position-relative d-inline-block">
+                    <img src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="{{ user.get_full_name }}" class="rounded-circle mb-3" style="width: 200px; height: 200px; object-fit: cover;">
+                    <div class="position-absolute bottom-0 end-0">
+                        <button class="btn btn-primary btn-sm rounded-circle" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
+                            <i class="fas fa-camera"></i>
+                        </button>
                     </div>
-                    <p class="card-text">Name: {{ user.get_full_name }}</p>
-                    <p class="card-text">Email: {{ user.email }}</p>
-                    <p class="card-text">Score: {{ user.total_score }}</p>
-                    <p class="card-text">Level: {{ user.level }}</p>
-                    <p class="card-text">Ranking: #{{ user_ranking }}</p> <!-- Add logic to calculate user_ranking -->
                 </div>
+                <h2>{{ user.get_full_name }}</h2>
+                <p class="text-muted">{{ user.email }}</p>
+                <div class="d-flex justify-content-center my-4">
+                    <div class="mx-3 text-center">
+                        <h5 class="mb-0">Level</h5>
+                        <p class="h3 text-primary">{{ user.level }}</p>
+                    </div>
+                    <div class="mx-3 text-center">
+                        <h5 class="mb-0">Score</h5>
+                        <p class="h3 text-success">{{ user.total_score }}</p>
+                    </div>
+                    <div class="mx-3 text-center">
+                        <h5 class="mb-0">Rank</h5>
+                        <p class="h3 text-info">#{{ user_ranking }}</p>
+                    </div>
+                </div>
+                <div class="progress mb-4" style="height: 20px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_percentage }}%;" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100">{{ progress_percentage }}%</div>
+                </div>
+                <p class="text-muted">{{ points_to_next_level }} points to next level</p>
+            </div>
+            
+            <h5 class="text-center mt-4 mb-3">Badges</h5>
+            <div class="d-flex flex-wrap justify-content-center">
+                {% for user_badge in user_badges %}
+                    <div class="badge-item m-2" data-bs-toggle="tooltip" title="{{ user_badge.badge.description }}">
+                        <img src="{{ user_badge.badge.icon.url }}" alt="{{ user_badge.badge.name }}" class="badge-icon" style="width: 50px; height: 50px;">
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No badges earned yet.</p>
+                {% endfor %}
             </div>
         </div>
 
-        <!-- Update Profile Form -->
-        <div class="col-lg-8 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Update Profile</h5>
+        <div class="col-lg-8">
+            <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="edit-profile-tab" data-bs-toggle="tab" data-bs-target="#edit-profile" type="button" role="tab" aria-controls="edit-profile" aria-selected="true">Edit Profile</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="change-password-tab" data-bs-toggle="tab" data-bs-target="#change-password" type="button" role="tab" aria-controls="change-password" aria-selected="false">Change Password</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="profileTabsContent">
+                <div class="tab-pane fade show active" id="edit-profile" role="tabpanel" aria-labelledby="edit-profile-tab">
                     <form method="post">
                         {% csrf_token %}
-                        {{ profile_form.as_p }}
+                        <div class="mb-3">
+                            <label for="{{ user_form.first_name.id_for_label }}" class="form-label">First Name</label>
+                            {{ user_form.first_name }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ user_form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                            {{ user_form.last_name }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ user_form.email.id_for_label }}" class="form-label">Email</label>
+                            {{ user_form.email }}
+                        </div>
                         <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
                     </form>
                 </div>
-            </div>
-        </div>
-
-        <!-- Change Password Form -->
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Change Password</h5>
+                <div class="tab-pane fade" id="change-password" role="tabpanel" aria-labelledby="change-password-tab">
                     <form method="post">
                         {% csrf_token %}
-                        {{ password_form.as_p }}
+                        <div class="mb-3">
+                            <label for="{{ password_form.old_password.id_for_label }}" class="form-label">Current Password</label>
+                            {{ password_form.old_password }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password1.id_for_label }}" class="form-label">New Password</label>
+                            {{ password_form.new_password1 }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password2.id_for_label }}" class="form-label">Confirm New Password</label>
+                            {{ password_form.new_password2 }}
+                        </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Update Picture Modal -->
-    <div class="modal fade" id="updatePictureModal" tabindex="-1" aria-labelledby="updatePictureModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="updatePictureModalLabel">Update Profile Picture</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="profile_picture" class="form-label">Profile Picture</label>
-                            <input type="file" class="form-control" id="profile_picture" name="profile_picture">
-                        </div>
-                        <button type="submit" name="update_picture" class="btn btn-primary">Update Picture</button>
-                    </form>
-                </div>
+<!-- Profile Picture Modal -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="profilePictureModalLabel">Update Profile Picture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" enctype="multipart/form-data" id="profilePictureForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_profile_picture" class="form-label">Choose a new profile picture</label>
+                        <input type="file" class="form-control" id="id_profile_picture" name="profile_picture" accept="image/*">
+                    </div>
+                    <button type="submit" name="update_picture" class="btn btn-primary">Update Picture</button>
+                    {% if user.profile_picture %}
+                        <button type="submit" name="remove_picture" class="btn btn-danger">Remove Picture</button>
+                    {% endif %}
+                </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Profile picture update
+    document.getElementById('profile-picture-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+            updateProfilePicture(formData);
+        }
+    });
+
+    // Remove profile picture
+    document.getElementById('remove-picture')?.addEventListener('click', function() {
+        if (confirm('Are you sure you want to remove your profile picture?')) {
+            const formData = new FormData();
+            formData.append('remove_picture', 'true');
+            updateProfilePicture(formData);
+        }
+    });
+
+    function updateProfilePicture(formData) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch("{% url 'update_profile_picture' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('profile-picture').src = data.new_picture_url || "{% static 'images/default_profile.png' %}";
+                location.reload();
+            } else {
+                alert('Error updating profile picture.');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
 {% endblock %}

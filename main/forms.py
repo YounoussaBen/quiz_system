@@ -49,14 +49,19 @@ OptionFormSet = forms.inlineformset_factory(
     Question, Option, form=OptionForm, extra=4, can_delete=True, max_num=4
 )
 
-class UserUpdateForm(UserChangeForm):
-    email = forms.EmailField(disabled=True)  # Email cannot be changed
-
+class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'profile_picture']
+        fields = ['first_name', 'last_name', 'email', 'profile_picture']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
+        }
 
-class PasswordChangeForm(PasswordChangeForm):
-    old_password = forms.CharField(widget=forms.PasswordInput())
-    new_password1 = forms.CharField(widget=forms.PasswordInput())
-    new_password2 = forms.CharField(widget=forms.PasswordInput())
+class CustomPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
