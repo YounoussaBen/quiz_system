@@ -139,6 +139,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'user_learning_materials' %}active{% endif %}" href="{% url 'user_learning_materials' %}">
+                    <i class="fas fa-book-reader me-2"></i>Learning Materials
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'user_profile' %}active{% endif %}" href="{% url 'my_profile' %}">
                     <i class="fas fa-user me-2"></i>My Profile
                 </a>

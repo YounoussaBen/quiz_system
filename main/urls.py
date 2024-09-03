@@ -31,5 +31,7 @@ urlpatterns = [
     path('leaderboard/', views.leaderboard_view, name='leaderboard'),
     path('my_profile/', views.my_profile, name='my_profile'),
     path('update-profile-picture/', views.update_profile_picture, name='update_profile_picture'),
+    path('learning-materials/', views.user_learning_materials, name='user_learning_materials'),
+    path('learning-materials/<int:material_id>/download/', views.download_material, name='download_material'),
 
 ]

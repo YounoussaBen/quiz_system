@@ -1,0 +1,173 @@
+{% extends 'user/user_base.html' %}
+{% load static %}
+
+{% block title %}Learning Materials{% endblock %}
+
+{% block extra_css %}
+<style>
+    .material-card {
+        transition: all 0.3s;
+        height: 100%;
+    }
+    .material-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .material-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    .preview-modal .modal-body {
+        height: 80vh;
+        overflow-y: auto;
+    }
+    .card-footer {
+        background-color: transparent;
+        border-top: none;
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Learning Materials</h1>
+
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <select id="topicFilter" class="form-select">
+                    <option value="">All Topics</option>
+                    {% for topic in topics %}
+                    <option value="{{ topic.id }}">{{ topic.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search materials...">
+            </div>
+        </div>
+    </div>
+
+    <div class="row" id="materialsContainer">
+        {% for material in materials %}
+        <div class="col-md-4 mb-4 material-item" data-topic="{{ material.topic.id }}">
+            <div class="card material-card">
+                <div class="card-body text-center">
+                    <div class="material-icon">
+                        {% if material.material_type == 'PDF' %}
+                        <i class="fas fa-file-pdf text-danger"></i>
+                        {% elif material.material_type == 'IMAGE' %}
+                        <i class="fas fa-image text-primary"></i>
+                        {% elif material.material_type == 'VIDEO' %}
+                        <i class="fas fa-video text-success"></i>
+                        {% else %}
+                        <i class="fas fa-file-alt text-secondary"></i>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title">{{ material.title }}</h5>
+                    <p class="card-text">{{ material.description|truncatewords:20 }}</p>
+                    <p class="text-muted">Topic: {{ material.topic.name }}</p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-outline-secondary me-2 preview-btn" data-material-id="{{ material.id }}">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <a href="{% url 'download_material' material.id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-center">No learning materials available at the moment.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade preview-modal" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">Material Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Preview content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        function filterMaterials() {
+            var topicId = $('#topicFilter').val();
+            var searchText = $('#searchInput').val().toLowerCase();
+
+            $('.material-item').each(function() {
+                var $item = $(this);
+                var itemTopicId = $item.data('topic');
+                var itemText = $item.text().toLowerCase();
+
+                var topicMatch = !topicId || itemTopicId == topicId;
+                var searchMatch = !searchText || itemText.includes(searchText);
+
+                if (topicMatch && searchMatch) {
+                    $item.show();
+                } else {
+                    $item.hide();
+                }
+            });
+        }
+
+        $('#topicFilter, #searchInput').on('change keyup', filterMaterials);
+
+        // Preview functionality
+        $('.preview-btn').on('click', function(e) {
+            e.preventDefault();
+            var materialId = $(this).data('material-id');
+            var previewUrl = "{% url 'preview_material' 0 %}".replace('0', materialId);
+            
+            $('#previewContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
+            $('#previewModal').modal('show');
+
+            $.ajax({
+                url: previewUrl,
+                method: 'GET',
+                xhrFields: {
+                    responseType: 'blob'
+                },
+                success: function(data, status, xhr) {
+                    var contentType = xhr.getResponseHeader('content-type');
+                    var blob = new Blob([data], {type: contentType});
+                    var url = window.URL.createObjectURL(blob);
+
+                    if (contentType.startsWith('image')) {
+                        $('#previewContent').html('<img src="' + url + '" class="img-fluid" />');
+                    } else if (contentType === 'application/pdf') {
+                        $('#previewContent').html('<embed src="' + url + '" type="application/pdf" width="100%" height="600px" />');
+                    } else if (contentType.startsWith('video')) {
+                        $('#previewContent').html('<video src="' + url + '" controls class="img-fluid"></video>');
+                    } else {
+                        $('#previewContent').html('<p>Preview not available for this file type.</p>');
+                    }
+                },
+                error: function() {
+                    $('#previewContent').html('<p>Error loading preview. Please try again.</p>');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -15,7 +15,7 @@ import json
 from .forms import UserUpdateForm, CustomPasswordChangeForm, CreateLearningMaterialForm, UpdateLearningMaterialForm
 from django.http import HttpResponse
 import mimetypes
-
+from django.http import FileResponse
 
 def logout_view(request):
     logout(request)
@@ -610,3 +610,28 @@ def update_profile_picture(request):
             request.user.save()
             return JsonResponse({'success': True})
     return JsonResponse({'success': False})
+
+
+@login_required
+def user_learning_materials(request):
+    materials = LearningMaterial.objects.all().order_by('-uploaded_at')
+    topics = Topic.objects.all()  # Add this line to fetch all topics
+    return render(request, 'user/learning_materials.html', {'materials': materials, 'topics': topics})
+
+@login_required
+def preview_material(request, material_id):
+    material = get_object_or_404(LearningMaterial, id=material_id)
+    if material.file:
+        response = FileResponse(material.file)
+        response['Content-Disposition'] = f'inline; filename="{material.file.name}"'
+        return response
+    return HttpResponse("File not found", status=404)
+
+@login_required
+def download_material(request, material_id):
+    material = get_object_or_404(LearningMaterial, id=material_id)
+    if material.file:
+        response = FileResponse(material.file, content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{material.file.name}"'
+        return response
+    return HttpResponse("File not found", status=404)
