@@ -19,7 +19,7 @@ urlpatterns = [
     path('admin_learning-materials/create/', views.create_learning_material, name='create_learning_material'),
     path('admin_learning-materials/<int:material_id>/update/', views.update_learning_material, name='update_learning_material'),
     path('admin_learning-materials/<int:material_id>/delete/', views.delete_learning_material, name='delete_learning_material'),
-    path('admin_learning-materials/preview/<int:material_id>/', views.preview_material, name='preview_material'),
+    path('admin_learning-materials/preview/<int:material_id>/', views.preview_material, name='admin_preview_material'),
 
 
     # path('dashboard/', user_home, name='user_home'),
@@ -33,5 +33,6 @@ urlpatterns = [
     path('update-profile-picture/', views.update_profile_picture, name='update_profile_picture'),
     path('learning-materials/', views.user_learning_materials, name='user_learning_materials'),
     path('learning-materials/<int:material_id>/download/', views.download_material, name='download_material'),
+    path('learning-materials/preview/<int:material_id>/', views.preview_material, name='user_preview_material'),
 
 ]

@@ -58,7 +58,6 @@ def register_view(request):
     return render(request, 'user/register.html')
 
 
-
 def is_admin(user):
     return user.is_authenticated and user.is_staff
 
@@ -261,7 +260,6 @@ def admin_profile(request, user_id):
     
     return JsonResponse(context)
 
-
 @user_passes_test(is_admin)
 def admin_learning_materials(request):
     materials = LearningMaterial.objects.all().order_by('-uploaded_at')
@@ -293,7 +291,6 @@ def create_learning_material(request):
             
             if not form.errors:
                 material.save()
-                messages.success(request, 'Learning material created successfully.')
                 return redirect('admin_learning_materials')
     else:
         form = CreateLearningMaterialForm()
@@ -318,7 +315,6 @@ def update_learning_material(request, material_id):
             
             if not form.errors:
                 form.save()
-                messages.success(request, 'Learning material updated successfully.')
                 return redirect('admin_learning_materials')
     else:
         form = UpdateLearningMaterialForm(instance=material)
@@ -330,7 +326,6 @@ def delete_learning_material(request, material_id):
     material = get_object_or_404(LearningMaterial, id=material_id)
     if request.method == 'POST':
         material.delete()
-        messages.success(request, 'Learning material deleted successfully.')
         return redirect('admin_learning_materials')
     return render(request, 'admin/delete_learning_material.html', {'material': material})
 
@@ -347,6 +342,8 @@ def preview_material(request, material_id):
             return response
     else:
         return HttpResponse("No file available for preview.")
+
+
 
 @login_required
 def user_home(request):
@@ -610,7 +607,6 @@ def update_profile_picture(request):
             request.user.save()
             return JsonResponse({'success': True})
     return JsonResponse({'success': False})
-
 
 @login_required
 def user_learning_materials(request):

@@ -53,6 +53,7 @@
             </div>
         </div>
     </div>
+    <br><br>
 
     <div class="row" id="materialsContainer">
         {% for material in materials %}
@@ -137,7 +138,7 @@
         $('.preview-btn').on('click', function(e) {
             e.preventDefault();
             var materialId = $(this).data('material-id');
-            var previewUrl = "{% url 'preview_material' 0 %}".replace('0', materialId);
+            var previewUrl = "{% url 'user_preview_material' 0 %}".replace('0', materialId);
             
             $('#previewContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
             $('#previewModal').modal('show');
