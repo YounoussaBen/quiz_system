@@ -1,14 +1,26 @@
-{% extends 'user/user_base.html' %}
-{% block content %}
+{% for user in page %}
+{% load static %}
 
-
-{% for user in page_obj %}
-<div class="flex items-center p-4">
-    <div class="w-12 text-2xl font-bold">{{ forloop.counter0|add:page_obj.start_index }}</div>
-    <div class="flex-1">
-        <div class="font-semibold">{{ user.firstname }}</div>
-        <div class="text-sm text-gray-500">Level: {{ user.level }} | Score: {{ user.total_score }}</div>
+<div class="card mb-3">
+    <div class="card-body d-flex align-items-center">
+        <div class="flex-shrink-0 me-3">
+            <img src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'images/default_profile.png' %}{% endif %}" alt="{{ user.get_full_name }}" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;">
+        </div>
+        <div class="flex-grow-1">
+            <h5 class="card-title mb-0">{{ user.get_full_name }}</h5>
+            <p class="card-text small mb-1">{{ user.email }}</p>
+            <p class="card-text">Level {{ user.level }} | Score: {{ user.total_score }}</p>
+        </div>
+        <div class="flex-shrink-0 text-end">
+            <span class="badge bg-primary rounded-pill fs-5">Rank #{{ forloop.counter|add:page.start_index|add:-1 }}</span>
+            {% with latest_badge=user.badges.last %}
+                {% if latest_badge %}
+                <div class="mt-2">
+                    <img src="{{ latest_badge.badge.icon }}" alt="{{ latest_badge.badge.name }}" class="badge-icon" style="width: 30px; height: 30px;" data-bs-toggle="tooltip" title="{{ latest_badge.badge.name }}">
+                </div>
+                {% endif %}
+            {% endwith %}
+        </div>
     </div>
 </div>
 {% endfor %}
-{% endblock %}

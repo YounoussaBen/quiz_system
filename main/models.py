@@ -41,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     total_score = models.IntegerField(default=0)
-    level = models.IntegerField(default=1)
+    level = models.IntegerField(default=0)
 
     objects = UserManager()
 

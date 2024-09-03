@@ -24,7 +24,6 @@ urlpatterns = [
     path('quiz/continue/<int:attempt_id>/', views.continue_quiz, name='continue_quiz'),
     path('leaderboard/', views.leaderboard_view, name='leaderboard'),
     path('my_profile/', views.my_profile, name='my_profile'),
-
-
+    path('update-profile-picture/', views.update_profile_picture, name='update_profile_picture'),
 
 ]
