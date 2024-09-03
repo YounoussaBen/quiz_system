@@ -603,6 +603,8 @@ def update_profile_picture(request):
             request.user.save()
             return JsonResponse({'success': True, 'new_picture_url': request.user.profile_picture.url})
         elif 'remove_picture' in request.POST:
+            if request.user.profile_picture:
+                request.user.profile_picture.delete()
             request.user.profile_picture = None
             request.user.save()
             return JsonResponse({'success': True})

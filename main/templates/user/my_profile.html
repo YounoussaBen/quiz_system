@@ -119,11 +119,11 @@
                         <label for="id_profile_picture" class="form-label">Choose a new profile picture</label>
                         <input type="file" class="form-control" id="id_profile_picture" name="profile_picture" accept="image/*">
                     </div>
-                    <button type="submit" name="update_picture" class="btn btn-primary">Update Picture</button>
-                    {% if user.profile_picture %}
-                        <button type="submit" name="remove_picture" class="btn btn-danger">Remove Picture</button>
-                    {% endif %}
+                    <button type="submit" class="btn btn-primary">Update Picture</button>
                 </form>
+                {% if user.profile_picture %}
+                    <button id="removePictureBtn" class="btn btn-danger mt-3">Remove Picture</button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -139,17 +139,14 @@
     });
 
     // Profile picture update
-    document.getElementById('profile-picture-input').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('profile_picture', file);
-            updateProfilePicture(formData);
-        }
+    document.getElementById('profilePictureForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        updateProfilePicture(formData);
     });
 
     // Remove profile picture
-    document.getElementById('remove-picture')?.addEventListener('click', function() {
+    document.getElementById('removePictureBtn')?.addEventListener('click', function() {
         if (confirm('Are you sure you want to remove your profile picture?')) {
             const formData = new FormData();
             formData.append('remove_picture', 'true');
@@ -169,7 +166,8 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                document.getElementById('profile-picture').src = data.new_picture_url || "{% static 'images/default_profile.png' %}";
+                document.querySelector('img.rounded-circle').src = data.new_picture_url || "{% static 'images/default_profile.png' %}";
+                bootstrap.Modal.getInstance(document.getElementById('profilePictureModal')).hide();
                 location.reload();
             } else {
                 alert('Error updating profile picture.');
